@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SubtitleBurn Pro - Professional Subtitle Burning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --secondary: #ec4899;
+            --bg-body: #020617;
+            --bg-card: #0f172a;
+            --bg-input: #020617;
+            --text-main: #f8fafc;
+            --text-muted: #cbd5e1;
+            --border: #1e293b;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-body);
+            background-image: radial-gradient(circle at 50% -20%, #2e1065 0%, transparent 60%);
+            color: var(--text-main);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header { text-align: center; margin-bottom: 60px; animation: fadeInDown 0.8s ease;}
+        
+        .badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3);
+            padding: 8px 18px; border-radius: 20px; font-size: 0.8rem;
+            font-weight: 600; color: #d8b4fe; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        header h1 {
+            font-family: 'Syne', sans-serif; font-size: 4rem; font-weight: 700;
+            margin-bottom: 12px; letter-spacing: -2px;
+            background: linear-gradient(to right, #d8b4fe, #ec4899);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        header p { color: var(--text-muted); font-size: 1.15rem; font-weight: 300; }
+
+        .icon { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+        
+        .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 30px; margin-bottom: 30px; }
+        @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; } }
+
+        .card {
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 20px; padding: 35px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: fadeInUp 0.8s ease; animation-fill-mode: both;
+        }
+
+        .card-header {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 30px;
+            font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 700;
+            padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .section-title {
+            font-size: 0.9rem; font-weight: 600; text-transform: uppercase; color: #a1a1aa;
+            margin: 24px 0 16px 0; letter-spacing: 1px; display: flex; align-items: center; gap: 10px;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.03); }
+
+        .form-group { margin-bottom: 24px; }
+        
+        label {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+            font-size: 0.85rem; font-weight: 600; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
+        input[type="text"], input[type="number"], textarea, select {
+            width: 100%; padding: 16px; background: var(--bg-input);
+            border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; color: var(--text-main);
+            font-family: inherit; font-size: 0.95rem; transition: all 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); background: #000; box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1); }
+
+        textarea { min-height: 140px; resize: vertical; font-family: 'Courier New', monospace;}
+
+        /* Enhanced File Input */
+        input[type="file"] { display: none; }
+        .file-upload-btn {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 15px; padding: 40px; background: rgba(0,0,0,0.1);
+            border: 2px dashed rgba(255,255,255,0.1); border-radius: 16px; cursor: pointer;
+            transition: all 0.2s; color: var(--text-muted); text-align: center;
+        }
+        .file-upload-btn:hover { border-color: var(--primary); color: var(--text-main); background: rgba(139, 92, 246, 0.03); }
+        .file-info { margin-top: 15px; font-size: 0.9rem; color: #a3e635; display: none; text-align: center;}
+
+        .btn-group { display: flex; gap: 12px; margin-bottom: 12px; }
+        
+        button {
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            padding: 14px 24px; border: none; border-radius: 12px; font-family: inherit;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+
+        .btn-outline { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); color: var(--text-main); flex: 1; }
+        .btn-outline:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+        
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; width: 100%; padding: 18px; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px;box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);}
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(139, 92, 246, 0.4);}
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .flex-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .color-group { display: flex; align-items: center; gap: 10px;}
+        .color-picker { width: 50px; height: 50px; padding: 0; border: none; border-radius: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);}
+        
+        input[type="range"] { flex: 1; accent-color: var(--primary); height: 8px; border-radius: 4px; border: none;}
+
+        /* Optimized Perfect Preview Container */
+        .preview-container {
+            width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1); overflow: hidden; position: relative;
+            display: flex; align-items: center; justify-content: center; margin-bottom: 25px;
+        }
+        .preview-video { width: 100%; height: 100%; object-fit: contain; }
+        .preview-placeholder { color: var(--text-muted); display: flex; flex-direction: column; align-items: center; gap: 15px; text-align: center; font-size: 1.1rem; }
+        
+        /* Subtitles *INSIDE* the Video Player area */
+        .preview-subtitle {
+            position: absolute; left: 0; right: 0; text-align: center; padding: 0 30px;
+            z-index: 10; max-width: 90%; margin: 0 auto; white-space: pre-wrap;
+            pointer-events: none; /* Subtitles won't interfere with video controls */
+        }
+
+        /* Radio Buttons */
+        .radio-group { display: flex; gap: 15px; }
+        .radio-option { flex: 1; position: relative; }
+        .radio-label {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            padding: 16px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;
+        }
+        input[type="radio"] { position: absolute; opacity: 0; }
+        input[type="radio"]:checked + .radio-label { background: rgba(139, 92, 246, 0.15); border-color: var(--primary); color: #d8b4fe; box-shadow: 0 0 15px rgba(139, 92, 246, 0.2); }
+
+        .system-status {
+            display: flex; align-items: center; gap: 12px; padding: 18px 24px;
+            border-radius: 12px; margin-bottom: 30px; font-weight: 500; font-size: 0.95rem;
+            animation: fadeInDown 0.8s ease;
+        }
+        
+        .progress-container { margin-top: 25px; display: none; }
+        .progress-bar { width: 100%; height: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; overflow: hidden; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);}
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary)); width: 0%; transition: width 0.3s ease; border-radius: 5px;}
+        
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="badge">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            Professional Engine
+        </div>
+        <h1>SubtitleBurn Pro</h1>
+        <p>Client-side high-fidelity subtitle embedding tool</p>
+    </header>
+
+    <div id="systemStatus" class="system-status" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); color: #cbd5e1;"></div>
+
+    <div class="grid">
+        <div class="card" style="animation-delay: 0.1s;">
+            <div class="card-header">
+                <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Media Configuration
+            </div>
+
+            <div class="form-group">
+                <label>1. Select Source Video</label>
+                <label for="videoInput" class="file-upload-btn">
+                    <svg class="icon" style="width:32px;height:32px;stroke-width:1;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <span>Click or drop video file</span>
+                </label>
+                <input type="file" id="videoInput" accept="video/*">
+                <div class="file-info" id="videoInfo"></div>
+            </div>
+
+            <div class="form-group">
+                <label>2. Add Subtitles</label>
+                <div class="btn-group">
+                    <button class="btn-outline" id="typeBtn">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        Manual Entry
+                    </button>
+                    <label for="srtInput" class="btn-outline" style="margin:0; display:flex;">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        Import SRT/VTT
+                    </label>
+                    <input type="file" id="srtInput" accept=".srt,.vtt">
+                </div>
+                <textarea id="subtitleText" placeholder="1
+00:00:01,000 --> 00:00:04,000
+Start typing your subtitle content here..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>3. Output Method</label>
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="burnHard" name="burnType" value="hard" checked>
+                        <label for="burnHard" class="radio-label">
+                            <svg class="icon" viewBox="0 0 24 24"><path d="M12 2c0 0-5 4.5-5 10a5 5 0 0 0 10 0c0-5.5-5-10-5-10Z"></path></svg>
+                            Hardcode (Permanent)
+                        </label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="burnSoft" name="burnType" value="soft">
+                        <label for="burnSoft" class="radio-label">
+                            <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                            Create SRT File
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="animation-delay: 0.2s;">
+            <div class="card-header">
+                <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+                Visual Tuning & Export
+            </div>
+
+            <div class="preview-container" id="previewContainer">
+                <div class="preview-placeholder">
+                    <svg class="icon" style="width:32px;height:32px;stroke-width:1;" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                    Awaiting Source Video
+                </div>
+            </div>
+
+            <div class="section-title">Visual Styling</div>
+
+            <div class="form-group">
+                <label>Typography</label>
+                <div class="flex-row">
+                    <select id="fontFamily">
+                        <option value="Arial" selected>Arial (Standard)</option>
+                        <option value="Arial Black">Arial Black (Thick)</option>
+                        <option value="Courier New">Courier New (Monospace)</option>
+                        <option value="Georgia">Georgia (Serif)</option>
+                        <option value="Verdana">Verdana</option>
+                    </select>
+                    <div class="color-group">
+                        <input type="color" id="textColor" class="color-picker" value="#FFFFFF">
+                        <input type="text" id="textColorValue" value="#FFFFFF" style="padding: 12px; font-size: 0.85rem; font-family: monospace;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Dimensions</label>
+                <div class="flex-row">
+                    <div style="display:flex; align-items:center; gap: 10px;">
+                        <input type="number" id="fontSizeInput" value="32" min="12" max="100" style="padding: 12px;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted); min-width:30px;">px</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap: 10px;">
+                        <input type="number" id="outlineWidth" value="2" min="0" max="10" step="0.5" style="padding: 12px;">
+                        <span style="font-size: 0.85rem; color: var(--text-muted); min-width:30px;">str.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Subtitle Appearance (Style)</label>
+                <select id="backgroundStyle">
+                    <option value="none" selected>Standard (No Special Style)</option>
+                    <option value="outline">Thin Outer Outline</option>
+                    <option value="shadow">Drop Shadow (Classic)</option>
+                    <option value="solid">Full Solid Background Box</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="bgColorGroup" style="display: none;">
+                <label>Background/Outline Color</label>
+                <div class="color-group">
+                    <input type="color" id="bgColor" class="color-picker" value="#000000">
+                    <input type="text" id="bgColorValue" value="#000000" style="flex:1; padding: 12px; font-size: 0.85rem; font-family: monospace;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Vertical Position</label>
+                <div class="flex-row" style="align-items: center; grid-template-columns: 1fr auto;">
+                    <input type="range" id="positionY" min="0" max="100" value="85">
+                    <span id="positionYValue" style="min-width: 45px; font-size: 0.9rem; font-family: monospace;">85%</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="burnBtn" disabled>
+                <svg class="icon" id="btnIcon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                <span id="btnText">Burn Subtitles to Video</span>
+            </button>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center;" id="progressText">Initializing encoding...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const state = { videoFile: null, ffmpegReady: false, isProcessing: false, ffmpeg: null, fetchFile: null };
+    const ui = {
+        videoInput: document.getElementById('videoInput'), subtitleText: document.getElementById('subtitleText'),
+        fontFamily: document.getElementById('fontFamily'), textColor: document.getElementById('textColor'), textColorValue: document.getElementById('textColorValue'),
+        fontSizeInput: document.getElementById('fontSizeInput'), outlineWidth: document.getElementById('outlineWidth'),
+        backgroundStyle: document.getElementById('backgroundStyle'), bgColor: document.getElementById('bgColor'), bgColorValue: document.getElementById('bgColorValue'), bgColorGroup: document.getElementById('bgColorGroup'),
+        positionY: document.getElementById('positionY'), positionYValue: document.getElementById('positionYValue'),
+        previewContainer: document.getElementById('previewContainer'), burnBtn: document.getElementById('burnBtn'),
+        progressContainer: document.getElementById('progressContainer'), progressFill: document.getElementById('progressFill'),
+        progressText: document.getElementById('progressText'), videoInfo: document.getElementById('videoInfo'),
+        srtInput: document.getElementById('srtInput'), systemStatus: document.getElementById('systemStatus'),
+        btnIcon: document.getElementById('btnIcon'), btnText: document.getElementById('btnText')
+    };
+
+    async function initFFmpegWithWait() {
+        try {
+            ui.systemStatus.innerHTML = '<svg class="icon spin" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Loading FFmpeg Core...';
+
+            let attempts = 0;
+            while ((typeof FFmpegWASM === 'undefined' || typeof FFmpegUtil === 'undefined') && attempts < 200) {
+                attempts++;
+                await new Promise(r => setTimeout(r, 50));
+            }
+
+            if (typeof FFmpegWASM === 'undefined') throw new Error('Could not load libraries. Please disable your Adblocker for this site.');
+
+            const { FFmpeg } = FFmpegWASM;
+            const { fetchFile, toBlobURL } = FFmpegUtil; 
+            state.fetchFile = fetchFile;
+
+            const ffmpeg = new FFmpeg();
+            ffmpeg.on('log', ({ message }) => console.log('[FFmpeg]', message));
+            ffmpeg.on('progress', ({ progress }) => {
+                const percent = Math.round(progress * 100);
+                ui.progressFill.style.width = `${percent}%`;
+                ui.progressText.textContent = `Encoding video... ${percent}% complete`;
+            });
+
+            // URLs for unpkg
+            const coreURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+            const ffmpegURL = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd';
+
+            // IMPORTANT FIX: We ONLY blob the worker to bypass the 'new Worker()' CORS requirement.
+            // We leave the core files as absolute URLs so importScripts doesn't crash in sandbox.
+            const workerURL = await toBlobURL(`${ffmpegURL}/814.ffmpeg.js`, 'text/javascript');
+
+            await ffmpeg.load({
+                coreURL: `${coreURL}/ffmpeg-core.js`,
+                wasmURL: `${coreURL}/ffmpeg-core.wasm`,
+                classWorkerURL: workerURL
+            });
+
+            state.ffmpeg = ffmpeg;
+            state.ffmpegReady = true;
+
+            ui.systemStatus.style.background = 'rgba(16, 185, 129, 0.1)';
+            ui.systemStatus.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+            ui.systemStatus.style.color = '#6ee7b7';
+            ui.systemStatus.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> FFmpeg Engine is Ready. Upload a video to begin burning.';
+            
+            if(state.videoFile) ui.burnBtn.disabled = false;
+
+        } catch (error) {
+            console.error('FFmpeg Init Error:', error);
+            ui.systemStatus.style.background = 'rgba(239, 68, 68, 0.1)';
+            ui.systemStatus.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+            ui.systemStatus.style.color = '#fca5a5';
+            ui.systemStatus.innerHTML = `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Error: ${error.message}`;
+        }
+    }
+
+    // Initialize only after the window has fully loaded all scripts
+    window.addEventListener('load', initFFmpegWithWait);
+
+    // DOM Interaction Logic
+    function getSubtitleStyle() {
+        return {
+            fontFamily: ui.fontFamily.value,
+            fontSize: parseInt(ui.fontSizeInput.value) || 32,
+            outlineWidth: parseFloat(ui.outlineWidth.value) || 2,
+            textColor: ui.textColor.value,
+            bgColor: ui.bgColor.value,
+            backgroundStyle: ui.backgroundStyle.value,
+            positionY: parseInt(ui.positionY.value)
+        };
+    }
+
+    function createSolidBgStyle(style) {
+        return `background-color: ${style.bgColor}; padding: 10px 20px; border-radius: 8px; display: inline-block;`;
+    }
+
+    // Dynamic Preview Update (Inside the video area)
+    function updatePreview() {
+        const textStr = ui.subtitleText.value.trim() || 'Preview Text Line 1\nPreview Line 2';
+        const rawLines = textStr.split('\n');
+        // Simple extraction to find text lines, filtering out numbers/timestamps
+        const lines = rawLines.filter(l => !l.includes('-->') && isNaN(l) && l.trim() !== '').slice(0, 3);
+        const finalPreviewText = lines.join('\n') || 'Preview Text';
+        
+        const style = getSubtitleStyle();
+        
+        const existing = ui.previewContainer.querySelector('.preview-subtitle');
+        if (existing) existing.remove();
+
+        if (state.videoFile && textStr) {
+            const sub = document.createElement('div');
+            sub.className = 'preview-subtitle';
+            sub.textContent = finalPreviewText;
+            
+            // Build visual CSS based on selected style options
+            let dynamicCSS = `
+                font-family: ${style.fontFamily}, sans-serif;
+                font-size: ${style.fontSize}px;
+                color: ${style.textColor};
+                bottom: ${100 - style.positionY}%; /* Correct inverted vertical anchor */
+            `;
+
+            switch(style.backgroundStyle) {
+                case 'outline': dynamicCSS += `text-shadow: 
+                    ${style.outlineWidth}px ${style.outlineWidth}px 0 ${style.bgColor},
+                    -${style.outlineWidth}px -${style.outlineWidth}px 0 ${style.bgColor}, 
+                    ${style.outlineWidth}px -${style.outlineWidth}px 0 ${style.bgColor}, 
+                    -${style.outlineWidth}px ${style.outlineWidth}px 0 ${style.bgColor};`; break;
+                case 'shadow': dynamicCSS += `text-shadow: 2px 2px 4px ${style.bgColor};`; break;
+                case 'solid': dynamicCSS += createSolidBgStyle(style); break;
+            }
+
+            sub.style.cssText = dynamicCSS;
+            ui.previewContainer.appendChild(sub);
+        }
+    }
+
+    // Sync input handlers
+    ui.backgroundStyle.addEventListener('change', (e) => {
+        ui.bgColorGroup.style.display = (e.target.value === 'none') ? 'none' : 'block';
+        updatePreview();
+    });
+
+    [ui.textColor, ui.bgColor].forEach(picker => {
+        picker.addEventListener('input', (e) => {
+            const valInput = (picker === ui.textColor) ? ui.textColorValue : ui.bgColorValue;
+            valInput.value = e.target.value; updatePreview();
+        });
+    });
+    
+    [ui.textColorValue, ui.bgColorValue].forEach(valInput => {
+        valInput.addEventListener('input', (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                const picker = (valInput === ui.textColorValue) ? ui.textColor : ui.bgColor;
+                picker.value = e.target.value; updatePreview();
+            }
+        });
+    });
+
+    [ui.fontFamily, ui.fontSizeInput, ui.outlineWidth, ui.subtitleText].forEach(el => el.addEventListener('input', updatePreview));
+    ui.positionY.addEventListener('input', (e) => { ui.positionYValue.textContent = e.target.value + '%'; updatePreview(); });
+
+    // SRT File Loading
+    ui.srtInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => { ui.subtitleText.value = event.target.result; updatePreview(); };
+            reader.readAsText(file);
+        }
+    });
+
+    // Video Loading
+    ui.videoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            state.videoFile = file;
+            ui.videoInfo.style.display = 'block';
+            ui.videoInfo.innerHTML = `<svg class="icon" viewBox="0 0 24 24" style="color:var(--success);"><polyline points="20 6 9 17 4 12"></polyline></svg> Loaded: <strong>${file.name}</strong> (${(file.size/1048576).toFixed(1)} MB)`;
+            const url = URL.createObjectURL(file);
+            ui.previewContainer.innerHTML = `<video class="preview-video" controls><source src="${url}" type="${file.type}"></video>`;
+            updatePreview();
+            if (state.ffmpegReady) ui.burnBtn.disabled = false;
+        }
+    });
+
+    document.getElementById('typeBtn').addEventListener('click', () => ui.subtitleText.focus());
+
+    // --- Burning/Export Logic ---
+
+    ui.burnBtn.addEventListener('click', async () => {
+        if (!state.videoFile || !ui.subtitleText.value.trim()) return alert('Error: Please provide video and text.');
+        const type = document.querySelector('input[name="burnType"]:checked').value;
+        if (type === 'soft') return createSoftSRT();
+        await performHardBurn();
+    });
+
+    function createSoftSRT() {
+        downloadFile(ui.subtitleText.value, 'subtitles.srt');
+    }
+
+    async function performHardBurn() {
+        if (!state.ffmpegReady) return alert('Error: FFmpeg engine is not ready.');
+        state.isProcessing = true; ui.burnBtn.disabled = true; ui.btnIcon.classList.add('spin');
+        ui.btnText.textContent = 'Processing Media...'; ui.progressContainer.style.display = 'block';
+
+        try {
+            const { ffmpeg, fetchFile } = state;
+            const inputName = 'input_media' + Date.now() + '.mp4';
+            const fontName = 'custom_font.ttf';
+            const srtName = 'subs.srt';
+            const outputName = 'subtitle_embedded_video.mp4';
+
+            // 1. Fetch physical font
+            ui.progressText.textContent = 'Loading custom font asset...';
+            await ffmpeg.writeFile(fontName, await fetchFile('https://raw.githubusercontent.com/ffmpegwasm/testdata/master/arial.ttf'));
+
+            // 2. Load Source Video & SRT Text
+            ui.progressText.textContent = 'Loading media into secure memory...';
+            await ffmpeg.writeFile(inputName, await fetchFile(state.videoFile));
+            await ffmpeg.writeFile(srtName, ui.subtitleText.value);
+
+            // 3. Construct the precise ***** styling filter based on user inputs
+            const style = getSubtitleStyle();
+            const fontColor = style.textColor.replace('#', '0x');
+            const outlineColor = style.bgColor.replace('#', '0x');
+            const ASS_V_POS = 100 - style.positionY; 
+
+            let forceStyle = `Fontname=Arial,FontSize=${style.fontSize},PrimaryColour=${fontColor},OutlineColour=${outlineColor},BorderStyle=1,Outline=${style.outlineWidth},Spacing=0.2`;
+
+            switch(style.backgroundStyle) {
+                case 'solid': forceStyle = `Fontname=Arial,FontSize=${style.fontSize},PrimaryColour=${fontColor},BackColour=${outlineColor},BorderStyle=3,Outline=1`; break;
+                case 'none': forceStyle = `Fontname=Arial,FontSize=${style.fontSize},PrimaryColour=${fontColor},Outline=0,Shadow=0`; break;
+            }
+            
+            forceStyle += `,MarginL=10,MarginR=10,MarginV=${ASS_V_POS}`;
+
+            const ffmpegFilter = `subtitles=${srtName}:fontsdir=/:force_style='${forceStyle}'`;
+
+            // 4. Perform the Burn/Transcode
+            await ffmpeg.exec(['-i', inputName, '-vf', ffmpegFilter, '-c:a', 'copy', '-y', outputName]);
+
+            // 5. Read output and trigger dynamic download
+            const data = await ffmpeg.readFile(outputName);
+            downloadFile(new Blob([data.buffer], { type: 'video/mp4' }), 'burned_subtitles_pro.mp4');
+
+            // 6. Memory Cleanup
+            [inputName, fontName, srtName, outputName].forEach(file => ffmpeg.deleteFile(file).catch(e=>console.log('Cleanup skip')));
+
+        } catch (err) {
+            console.error('Encoding Error:', err);
+            alert('A critical error occurred during media processing: ' + err.message);
+        } finally {
+            state.isProcessing = false; ui.burnBtn.disabled = false; ui.btnIcon.classList.remove('spin');
+            ui.btnText.textContent = 'Burn Subtitles to Video'; ui.progressContainer.style.display = 'none'; ui.progressFill.style.width = '0%';
+        }
+    }
+
+    function downloadFile(content, filename) {
+        const url = content instanceof Blob ? URL.createObjectURL(content) : URL.createObjectURL(new Blob([content], { type: 'text/plain' }));
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+    }
+</script>
+</body>
+</html>
