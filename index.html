@@ -143,7 +143,7 @@
         .preview-subtitle {
             position: absolute; left: 0; right: 0; text-align: center; padding: 0 30px;
             z-index: 10; max-width: 90%; margin: 0 auto; white-space: pre-wrap;
-            pointer-events: none; /* Subtitles won't interfere with video controls */
+            pointer-events: none;
         }
 
         /* Radio Buttons */
@@ -352,7 +352,7 @@ Start typing your subtitle content here..."></textarea>
 
     async function initFFmpegWithWait() {
         try {
-            ui.systemStatus.innerHTML = '<svg class="icon spin" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Loading FFmpeg Core...';
+            ui.systemStatus.innerHTML = '<svg class="icon spin" viewBox="0 0 24 24"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Loading FFmpeg Core (Strict Host Mode)...';
 
             let attempts = 0;
             while ((typeof FFmpegWASM === 'undefined' || typeof FFmpegUtil === 'undefined') && attempts < 200) {
@@ -360,7 +360,7 @@ Start typing your subtitle content here..."></textarea>
                 await new Promise(r => setTimeout(r, 50));
             }
 
-            if (typeof FFmpegWASM === 'undefined') throw new Error('Could not load libraries. Please disable your Adblocker for this site.');
+            if (typeof FFmpegWASM === 'undefined') throw new Error('Could not load libraries. Please check your internet connection.');
 
             const { FFmpeg } = FFmpegWASM;
             const { fetchFile, toBlobURL } = FFmpegUtil; 
@@ -374,18 +374,15 @@ Start typing your subtitle content here..."></textarea>
                 ui.progressText.textContent = `Encoding video... ${percent}% complete`;
             });
 
-            // URLs for unpkg
             const coreURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
             const ffmpegURL = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd';
 
-            // IMPORTANT FIX: We ONLY blob the worker to bypass the 'new Worker()' CORS requirement.
-            // We leave the core files as absolute URLs so importScripts doesn't crash in sandbox.
-            const workerURL = await toBlobURL(`${ffmpegURL}/814.ffmpeg.js`, 'text/javascript');
-
+            // GITHUB PAGES FIX: Blob ALL the files. GitHub Pages blocks the web worker 
+            // from importing external scripts via importScripts.
             await ffmpeg.load({
-                coreURL: `${coreURL}/ffmpeg-core.js`,
-                wasmURL: `${coreURL}/ffmpeg-core.wasm`,
-                classWorkerURL: workerURL
+                coreURL: await toBlobURL(`${coreURL}/ffmpeg-core.js`, 'text/javascript'),
+                wasmURL: await toBlobURL(`${coreURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                classWorkerURL: await toBlobURL(`${ffmpegURL}/814.ffmpeg.js`, 'text/javascript')
             });
 
             state.ffmpeg = ffmpeg;
@@ -427,11 +424,9 @@ Start typing your subtitle content here..."></textarea>
         return `background-color: ${style.bgColor}; padding: 10px 20px; border-radius: 8px; display: inline-block;`;
     }
 
-    // Dynamic Preview Update (Inside the video area)
     function updatePreview() {
         const textStr = ui.subtitleText.value.trim() || 'Preview Text Line 1\nPreview Line 2';
         const rawLines = textStr.split('\n');
-        // Simple extraction to find text lines, filtering out numbers/timestamps
         const lines = rawLines.filter(l => !l.includes('-->') && isNaN(l) && l.trim() !== '').slice(0, 3);
         const finalPreviewText = lines.join('\n') || 'Preview Text';
         
@@ -445,12 +440,11 @@ Start typing your subtitle content here..."></textarea>
             sub.className = 'preview-subtitle';
             sub.textContent = finalPreviewText;
             
-            // Build visual CSS based on selected style options
             let dynamicCSS = `
                 font-family: ${style.fontFamily}, sans-serif;
                 font-size: ${style.fontSize}px;
                 color: ${style.textColor};
-                bottom: ${100 - style.positionY}%; /* Correct inverted vertical anchor */
+                bottom: ${100 - style.positionY}%; 
             `;
 
             switch(style.backgroundStyle) {
@@ -468,7 +462,6 @@ Start typing your subtitle content here..."></textarea>
         }
     }
 
-    // Sync input handlers
     ui.backgroundStyle.addEventListener('change', (e) => {
         ui.bgColorGroup.style.display = (e.target.value === 'none') ? 'none' : 'block';
         updatePreview();
@@ -493,7 +486,6 @@ Start typing your subtitle content here..."></textarea>
     [ui.fontFamily, ui.fontSizeInput, ui.outlineWidth, ui.subtitleText].forEach(el => el.addEventListener('input', updatePreview));
     ui.positionY.addEventListener('input', (e) => { ui.positionYValue.textContent = e.target.value + '%'; updatePreview(); });
 
-    // SRT File Loading
     ui.srtInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -503,7 +495,6 @@ Start typing your subtitle content here..."></textarea>
         }
     });
 
-    // Video Loading
     ui.videoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -518,8 +509,6 @@ Start typing your subtitle content here..."></textarea>
     });
 
     document.getElementById('typeBtn').addEventListener('click', () => ui.subtitleText.focus());
-
-    // --- Burning/Export Logic ---
 
     ui.burnBtn.addEventListener('click', async () => {
         if (!state.videoFile || !ui.subtitleText.value.trim()) return alert('Error: Please provide video and text.');
@@ -544,16 +533,13 @@ Start typing your subtitle content here..."></textarea>
             const srtName = 'subs.srt';
             const outputName = 'subtitle_embedded_video.mp4';
 
-            // 1. Fetch physical font
             ui.progressText.textContent = 'Loading custom font asset...';
             await ffmpeg.writeFile(fontName, await fetchFile('https://raw.githubusercontent.com/ffmpegwasm/testdata/master/arial.ttf'));
 
-            // 2. Load Source Video & SRT Text
             ui.progressText.textContent = 'Loading media into secure memory...';
             await ffmpeg.writeFile(inputName, await fetchFile(state.videoFile));
             await ffmpeg.writeFile(srtName, ui.subtitleText.value);
 
-            // 3. Construct the precise ***** styling filter based on user inputs
             const style = getSubtitleStyle();
             const fontColor = style.textColor.replace('#', '0x');
             const outlineColor = style.bgColor.replace('#', '0x');
@@ -570,14 +556,11 @@ Start typing your subtitle content here..."></textarea>
 
             const ffmpegFilter = `subtitles=${srtName}:fontsdir=/:force_style='${forceStyle}'`;
 
-            // 4. Perform the Burn/Transcode
             await ffmpeg.exec(['-i', inputName, '-vf', ffmpegFilter, '-c:a', 'copy', '-y', outputName]);
 
-            // 5. Read output and trigger dynamic download
             const data = await ffmpeg.readFile(outputName);
             downloadFile(new Blob([data.buffer], { type: 'video/mp4' }), 'burned_subtitles_pro.mp4');
 
-            // 6. Memory Cleanup
             [inputName, fontName, srtName, outputName].forEach(file => ffmpeg.deleteFile(file).catch(e=>console.log('Cleanup skip')));
 
         } catch (err) {
